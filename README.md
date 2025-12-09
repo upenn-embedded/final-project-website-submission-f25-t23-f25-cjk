@@ -437,7 +437,7 @@ Reflect on your project. Some questions to address:
   - Timeline Management showed itself materially in the final rugged fidelity of the final prototype, as discussed in the following section.
 - Did you encounter obstacles that you didn’t anticipate?
   - Ordering:
-    - The indirectness of the process via an Account Manager created some orders to not be made by mis-communication.
+    - Mis-communication with Account Manager caused some planned early orders to not be placed.
     - Surprisingly, the most basic orders via Amazon did not arrive until days before the Final Demonstration
   - Hardware Integration
     - While device performance was servicable in the context of our controlled testing, and demonstration, the physical integration is the most significant deficit of the device.
