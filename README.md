@@ -23,6 +23,231 @@
 
 **GitHub Pages Website URL:** [https://upenn-embedded.github.io/final-project-website-submission-f25-t23-f25-cjk/](https://upenn-embedded.github.io/final-project-website-submission-f25-t23-f25-cjk/)
 
+# Project Description
+
+# Final Project Report
+
+## 1. Video
+
+[Insert final project video here]
+
+- The video must demonstrate your key functionality.
+- The video must be 5 minutes or less.
+- Ensure your video link is accessible to the teaching team. Unlisted YouTube videos or Google Drive uploads with SEAS account access work well.
+- Points will be removed if the audio quality is poor - say, if you filmed your video in a noisy electrical engineering lab.
+
+## 2. Images
+
+[Insert final project images here]
+
+_Include photos of your device from a few angles. If you have a casework, show both the exterior and interior (where the good EE bits are!)._
+
+## 3. Results
+
+_What were your results? Namely, what was the final solution/design to your problem?_
+
+### 3.1 Software Requirements Specification (SRS) Results
+
+_Based on your quantified system performance, comment on how you achieved or fell short of your expected requirements._
+
+_Did your requirements change? If so, why? Failing to meet a requirement is acceptable; understanding the reason why is critical!_
+
+_Validate at least two requirements, showing how you tested and your proof of work (videos, images, logic analyzer/oscilloscope captures, etc.)._
+
+| ID     | Description                                                                                                                                                    | Validation Outcome                                                                                                                                                   |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SRS-01 | The IMU 3-axis accelerometer and gyroscope shall be sampled at at least 100 Hz ±5 Hz using an I2C interrupt-based routine.                                     | Complete, shown below                                                                                                                                                |
+| SRS-02 | The MCU shall process every 0.5-second window of IMU data to compute statistical and frequency features with no overlap or interference between windows.       | Partially completed, we use a window of 1.0 seconds instead to give more accurate predictions. shown below                                                           |
+| SRS-03 | The embedded classifier shall correctly identify at least 3 activities (running, jumping jacks, sitting) with >85% accuracy.                                   | Completed, unconfirmed Review video, count ticks                                                                                                                     |
+| SRS-04 | The current detected activity shall update on the ST7735R LCD screen within 1 second of the motion window being processed.                                     | Completed, confirmed ✅(Implicit facet of video demo.)                                                                                                               |
+| SRS-05 | The software shall output at least one unique audio signal per identifiable activity type.                                                                     | Completed, confirmed ✅(Implicit facet of video demo.)                                                                                                               |
+| SRS-06 | The software shall responds to at least one session-wide parameter (i.e. excessive break time) with a warning on at least one of the output `<br>`peripherals. | Completed, confirmed ✅(Implicit facet of video demo.)                                                                                                               |
+| SRS-07 | The software shall allow easy addition of new activities by retraining and re-exporting the model header file.                                                 | Completed, unconfirmed as this specification is inappropriately qualitative.🧠Assess code structure to describe challenge or lack thereof of adding another activity |
+| SRS-08 | The system shall operate continuously for at least 2 hours without requiring a reset or power cycle.                                                           | Completed, theoretically confirmed.`<br>`🧠(Link BOM)`<br><br>`Could technically film a timelapse lol. `<br>`                                                        |
+
+#### Proof of SRS-01 and SRS-02
+
+The IMU's internal Output Data Rate (ODR) is set to 104 Hz via the control registers. From `activity_detect_withLCD&beeps.c`:
+
+```markdown
+#define CTRL1_XL_104HZ 0x40 // Accelerometer ODR = 104 Hz
+#define CTRL2_G_104HZ 0x40 // Gyroscope ODR = 104 Hz
+```
+
+The main loop reads IMU data with a fixed delay:
+
+```c
+while (1) {
+    int16_t ax, ay, az, gx, gy, gz;
+    imu_read_axes(&ax, &ay, &az, &gx, &gy, &gz);
+    stats_update(&stats, ax, ay, az, gx, gy, gz);
+
+    if (stats.count >= 100) {
+        // ... prediction and processing ...
+        stats_reset(&stats);
+    }
+
+    _delay_ms(10);  // This determines sampling rate
+}
+```
+
+**Sampling period calculation:**
+
+Let `delay_ms = 10` ms (from `_delay_ms(10)` at line 466)
+
+$$
+T_{\text{sample}} = 10 \text{ ms} = 0.01 \text{ s}
+$$
+
+$$
+f_{sample} = \frac{1}{T_{sample}} = \frac{1}{0.01 \text{ s}} = 100 \text{ Hz}
+$$
+
+Data Collection Window
+
+Each prediction uses a window of samples:
+
+```c
+if (stats.count >= 100) {
+    float features[32];
+    compute_features(&stats, features);
+    int cls = predict_activity(features);
+    // ...
+    stats_reset(&stats);
+}
+```
+
+Let `N = 100` samples (from `stats.count >= 100` at line 394)
+
+**Time window calculation:**
+
+$$
+T_{window} = \frac{N}{f_{sample}} = \frac{100 \text{ samples}}{100 \text{ Hz}} = 1 \text{ second}
+$$
+
+Each activity classification is based on **1 second** of IMU data sampled at **100 Hz** .
+
+$$
+f_{sample} = \frac{1}{delay_ms} = \frac{1}{10 \times 10^{-3} \text{ s}} = 100 \text{ Hz}
+$$
+
+**Window duration:**
+
+$$
+T_{window} = \frac{N}{f_{sample}} = \frac{100 \text{ samples}}{100 \text{ Hz}} = 1.0 \text{ second}
+$$
+
+**Window overlap:**
+
+Windows are non-overlapping because `stats_reset(&stats)` is called after each prediction, clearing all accumulated data before the next window begins.
+
+### 3.2 Hardware Requirements Specification (HRS) Results
+
+_Based on your quantified system performance, comment on how you achieved or fell short of your expected requirements._
+
+_Did your requirements change? If so, why? Failing to meet a requirement is acceptable; understanding the reason why is critical!_
+
+_Validate at least two requirements, showing how you tested and your proof of work (videos, images, logic analyzer/oscilloscope captures, etc.)._
+
+| ID     | Description                                                                                                                                                  | Validation Outcome                                                                                                                                                                                                                                                                                                                   |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| HRS-01 | The system shall use two 6-axis IMUs (accelerometer + gyroscope) connected via I2C for motion data collection.                                               | Altered, but new spec. successful `<br><br>`Original specification assumed one-IMU per hand used, with using a second hand at all an open question. We employed a single IMU to attain desired performance (SRS-03).`<br><br>`Confirmation is existential / trivial                                                                  |
+| HRS-02 | The LCD (ST7735R) shall communicate with the MCU via SPI and display activity text updates at least twice per second.                                        | Successful, confirmation shown via video demonstration                                                                                                                                                                                                                                                                               |
+| HRS-03 | The speaker system will produce at least one identifiable and audible (30-`<br>`70dB) noise per identifiable activity type.                                  | Successful, partially confirmed.`<br>`Demonstrated in video, volume level not explicitly, quantitatively proven.                                                                                                                                                                                                                     |
+| HRS-04 | The ATmega328PB Xplained Mini shall sample and process data at 100 Hz `<br>`while maintaining <75% CPU utilization and maximum interrupt latency<1 `<br>`ms. | Successful,`<br>`Unverified, though firmware blocking / delay has never been observed in testing other specifications.                                                                                                                                                                                                               |
+| HRS-05 | The power subsystem shall provide 3.3V regulated output from a 3.7V Li-`<br>`Po battery with at least 500 mAh capacity.                                      | Altered, but functionally successful.`<br>`Power regulator required replacement due to issues in ordering. Boosts voltage to 5V to power the ATMega, and leveraging the MCU's ability to drive a 3.3 V rail for low-current peripherals.                                                                                             |
+| HRS-06 | The total current draw of the entire system (MCU + sensors + LCD) during `<br>`continuous operation shall remain ≤ 150 mA                                    | Successful `<br><br>`🧠could verify using multimeter.`<br>`Otherwise verified theoretically, all peripherals accounted for.                                                                                                                                                                                                          |
+| HRS-07 | The system shall operate continuously for at least 2 hours at 35 °C without `<br>`reset, crash, or data loss.                                                | Successful, verified theoretically (BOM current draw vs battery capacity).                                                                                                                                                                                                                                                           |
+| HRS-08 | All modules shall be mechanically integrated within an enclosure. The IMU `<br>`orientation error relative to the wrist reference frame shall be ≤ 10°.      | Partially successful:`<br>`The hardware is mechanically integrated on a single prototype, though not in an enclosure, creating slight fidelity concerns felt when putting the device on.`<br>`This integration does, however, fulfill the need to keep the IMU in consistent orientation relative to the arm (see product pictures). |
+
+## 4. Conclusion
+
+Reflect on your project. Some questions to address:
+
+- What did you learn from it?
+- What went well?
+  - Device Focus and Inspiration: The team chose this device concept based on an individual's background in an advanced topic (Machine Learning). Working around this firmware proposed novel but satisfying and ultimately succesful challenges.
+- What accomplishments are you proud of?
+  - Performance and Firmware Integration: The prototype runs in real-time, wirelessly, with no observable errors throughout the final demonstration. While some of these may've been assumed goals based on the project domain, the device feels more cohesive and functional that the HRS/SRS alone may convey.
+  - Form Factor: Although short of specification in some ways, having everything mounted on a single, lightweight wearable is visually striking and resulted in a satisfying final work period and demonstration.
+- What did you learn/gain from this experience?
+  - Larger Codebase Management: Team Members had to review one another's code updates to remain current on device function and precisely how the MCU was being utilized.
+- Did you have to change your approach?
+  - Early: Putting the second E in ESE by integrating an additional peripheral (audio feedback) was a major pivot point guided by staff feedback. As seen in our demonstrations, this addition greatly boosted our confidence in our devices utility and prompted us to explore further in making the display uniquely useful in addition to the audio system.
+  - Hardware Simplification: As can be seen in the evolving block diagrams, many changes were made to underlying hardware, typcically simplifiying systems into fewer devices. This was an important lesso in researching the state of the art, as attempts to build the audio system from scratch was far more expensive and less effective than an off-the-shelf board from Adafruit.
+- What could have been done differently?
+  - Team Communication and Meeting was very sparse, resulting in submission products coming together last-minute. This reality of team members' schedules was managed but did impact the team's ability to source and respond to feedback.
+  - Timeline Management showed itself materially in the final rugged fidelity of the final prototype, as discussed in the following section.
+- Did you encounter obstacles that you didn’t anticipate?
+  - Ordering:
+    - The indirectness of the process via an Account Manager created some orders to not be made by mis-communication.
+    - Surprisingly, the most basic orders via Amazon did not arrive until days before the Final Demonstration
+  - Hardware Integration
+    - While device performance was servicable in the context of our controlled testing, and demonstration, the physical integration is the most significant deficit of the device.
+    - Lead on this element, Christian, pigeon-holed on 3D-printing given the small scale and unique form factor, without accounting for other team member's changes and MEAM lab timelines.
+- What could be a next step for this project?
+  - Expansion: Better showcase the extensibility of the ML approach by adding addditional activities.
+  - Movement Counting: Attempt to capture individual excercise repititions to carve more of a niche as a high-performance excercise aid.
+  - Commercial Avenues are not of realistic interest. This project was a exploration of firmware concepts in a uniquely challenging environment at the cost of competitive utility.
+
+## References
+
+## C Libraries
+
+#### From WS3 (Worksheet 3)
+
+- **i2c.h / i2c.c** - I2C communication library for interfacing with the LSM6DSO IMU sensor over I2C protocol
+
+#### From Lab 4
+
+- **lib/ST7735.h / lib/ST7735.c** - Driver library for the ST7735 TFT LCD display controller, providing low-level display initialization and control functions
+- **lib/LCD_GFX.h / lib/LCD_GFX.c** - Graphics library for drawing text, shapes, and managing the LCD screen with the ST7735 controller
+
+#### Standard AVR Libraries
+
+- **avr/io.h** - AVR device-specific I/O definitions
+- **util/delay.h** - Delay functions for AVR microcontrollers
+- **avr/interrupt.h** - Interrupt handling for AVR
+- **stdio.h** - Standard input/output (sprintf)
+- **stdint.h** - Standard integer types (int16_t, uint8_t, etc.)
+- **string.h** - String manipulation (memset)
+- **math.h** - Mathematical functions (sqrtf)
+
+### Python Libraries
+
+#### data_collection.py
+
+- **serial** - PySerial library for serial communication with the microcontroller over USB
+  - Used to read IMU data from the device
+  - Install: `pip install pyserial`
+- **time** - Standard library for time-related functions
+- **os** - Standard library for file and directory operations
+- **glob** - Standard library for file pattern matching
+- **sys** - Standard library for command-line argument handling
+
+#### train_activity_classifier.py
+
+- **numpy** - Numerical computing library for array operations and mathematical functions
+  - Install: `pip install numpy`
+- **pandas** - Data manipulation library for reading and processing CSV files
+  - Install: `pip install pandas`
+- **scikit-learn** - Machine learning library
+  - **sklearn.tree.DecisionTreeClassifier** - Decision tree classifier
+  - **sklearn.utils.shuffle** - Dataset shuffling utility
+  - **sklearn.metrics** - Model evaluation metrics (accuracy_score, classification_report)
+  - Install: `pip install scikit-learn`
+- **joblib** - Library for saving and loading Python objects (model persistence)
+  - Install: `pip install joblib`
+- **os** - Standard library for file operations
+- **glob** - Standard library for file pattern matching
+
+#### export_tree_to_c.py
+
+- **joblib** - Library for loading saved model files
+  - Install: `pip install joblib`
+- **numpy** - Used for array operations when processing model data
+  - Install: `pip install numpy`
+
 # Final Project Proposal
 
 ## 1. Abstract
@@ -542,229 +767,3 @@ Show how you collected data and the outcomes.
   - Required Parts:
     - Storage - audio system currently bottle-necked by ability to host realistic-sounding audio directly on the ATMEGA
     - Gloves / Wearable component - less of an issue to source, unusual shipping delays from Amazon has kept team without a model to secure peripherals to.
-
-# Final Project Report
-
-Don't forget to make the GitHub pages public website!
-If you’ve never made a GitHub pages website before, you can follow this webpage (though, substitute your final project repository for the GitHub username one in the quickstart guide): [https://docs.github.com/en/pages/quickstart](https://docs.github.com/en/pages/quickstart)
-
-## 1. Video
-
-[Insert final project video here]
-
-- The video must demonstrate your key functionality.
-- The video must be 5 minutes or less.
-- Ensure your video link is accessible to the teaching team. Unlisted YouTube videos or Google Drive uploads with SEAS account access work well.
-- Points will be removed if the audio quality is poor - say, if you filmed your video in a noisy electrical engineering lab.
-
-## 2. Images
-
-[Insert final project images here]
-
-_Include photos of your device from a few angles. If you have a casework, show both the exterior and interior (where the good EE bits are!)._
-
-## 3. Results
-
-_What were your results? Namely, what was the final solution/design to your problem?_
-
-### 3.1 Software Requirements Specification (SRS) Results
-
-_Based on your quantified system performance, comment on how you achieved or fell short of your expected requirements._
-
-_Did your requirements change? If so, why? Failing to meet a requirement is acceptable; understanding the reason why is critical!_
-
-_Validate at least two requirements, showing how you tested and your proof of work (videos, images, logic analyzer/oscilloscope captures, etc.)._
-
-| ID     | Description                                                                                                                                                    | Validation Outcome                                                                                                                                                   |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SRS-01 | The IMU 3-axis accelerometer and gyroscope shall be sampled at at least 100 Hz ±5 Hz using an I2C interrupt-based routine.                                     | Complete, shown below                                                                                                                                                |
-| SRS-02 | The MCU shall process every 0.5-second window of IMU data to compute statistical and frequency features with no overlap or interference between windows.       | Partially completed, we use a window of 1.0 seconds instead to give more accurate predictions. shown below                                                           |
-| SRS-03 | The embedded classifier shall correctly identify at least 3 activities (running, jumping jacks, sitting) with >85% accuracy.                                   | Completed, unconfirmed Review video, count ticks                                                                                                                     |
-| SRS-04 | The current detected activity shall update on the ST7735R LCD screen within 1 second of the motion window being processed.                                     | Completed, confirmed ✅(Implicit facet of video demo.)                                                                                                               |
-| SRS-05 | The software shall output at least one unique audio signal per identifiable activity type.                                                                     | Completed, confirmed ✅(Implicit facet of video demo.)                                                                                                               |
-| SRS-06 | The software shall responds to at least one session-wide parameter (i.e. excessive break time) with a warning on at least one of the output `<br>`peripherals. | Completed, confirmed ✅(Implicit facet of video demo.)                                                                                                               |
-| SRS-07 | The software shall allow easy addition of new activities by retraining and re-exporting the model header file.                                                 | Completed, unconfirmed as this specification is inappropriately qualitative.🧠Assess code structure to describe challenge or lack thereof of adding another activity |
-| SRS-08 | The system shall operate continuously for at least 2 hours without requiring a reset or power cycle.                                                           | Completed, theoretically confirmed.`<br>`🧠(Link BOM)`<br><br>`Could technically film a timelapse lol. `<br>`                                                        |
-
-#### Proof of SRS-01 and SRS-02
-
-The IMU's internal Output Data Rate (ODR) is set to 104 Hz via the control registers. From `activity_detect_withLCD&beeps.c`:
-
-```markdown
-#define CTRL1_XL_104HZ 0x40 // Accelerometer ODR = 104 Hz
-#define CTRL2_G_104HZ 0x40 // Gyroscope ODR = 104 Hz
-```
-
-The main loop reads IMU data with a fixed delay:
-
-```c
-while (1) {
-    int16_t ax, ay, az, gx, gy, gz;
-    imu_read_axes(&ax, &ay, &az, &gx, &gy, &gz);
-    stats_update(&stats, ax, ay, az, gx, gy, gz);
-
-    if (stats.count >= 100) {
-        // ... prediction and processing ...
-        stats_reset(&stats);
-    }
-
-    _delay_ms(10);  // This determines sampling rate
-}
-```
-
-**Sampling period calculation:**
-
-Let `delay_ms = 10` ms (from `_delay_ms(10)` at line 466)
-
-$$
-T_{\text{sample}} = 10 \text{ ms} = 0.01 \text{ s}
-$$
-
-$$
-f_{sample} = \frac{1}{T_{sample}} = \frac{1}{0.01 \text{ s}} = 100 \text{ Hz}
-$$
-
-Data Collection Window
-
-Each prediction uses a window of samples:
-
-```c
-if (stats.count >= 100) {
-    float features[32];
-    compute_features(&stats, features);
-    int cls = predict_activity(features);
-    // ...
-    stats_reset(&stats);
-}
-```
-
-Let `N = 100` samples (from `stats.count >= 100` at line 394)
-
-**Time window calculation:**
-
-$$
-T_{window} = \frac{N}{f_{sample}} = \frac{100 \text{ samples}}{100 \text{ Hz}} = 1 \text{ second}
-$$
-
-Each activity classification is based on **1 second** of IMU data sampled at **100 Hz** .
-
-$$
-f_{sample} = \frac{1}{delay_ms} = \frac{1}{10 \times 10^{-3} \text{ s}} = 100 \text{ Hz}
-$$
-
-**Window duration:**
-
-$$
-T_{window} = \frac{N}{f_{sample}} = \frac{100 \text{ samples}}{100 \text{ Hz}} = 1.0 \text{ second}
-$$
-
-**Window overlap:**
-
-Windows are non-overlapping because `stats_reset(&stats)` is called after each prediction, clearing all accumulated data before the next window begins.
-
-### 3.2 Hardware Requirements Specification (HRS) Results
-
-_Based on your quantified system performance, comment on how you achieved or fell short of your expected requirements._
-
-_Did your requirements change? If so, why? Failing to meet a requirement is acceptable; understanding the reason why is critical!_
-
-_Validate at least two requirements, showing how you tested and your proof of work (videos, images, logic analyzer/oscilloscope captures, etc.)._
-
-| ID     | Description                                                                                                                                                  | Validation Outcome                                                                                                                                                                                                                                                                                                                   |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| HRS-01 | The system shall use two 6-axis IMUs (accelerometer + gyroscope) connected via I2C for motion data collection.                                               | Altered, but new spec. successful `<br><br>`Original specification assumed one-IMU per hand used, with using a second hand at all an open question. We employed a single IMU to attain desired performance (SRS-03).`<br><br>`Confirmation is existential / trivial                                                                  |
-| HRS-02 | The LCD (ST7735R) shall communicate with the MCU via SPI and display activity text updates at least twice per second.                                        | Successful, confirmation shown via video demonstration                                                                                                                                                                                                                                                                               |
-| HRS-03 | The speaker system will produce at least one identifiable and audible (30-`<br>`70dB) noise per identifiable activity type.                                  | Successful, partially confirmed.`<br>`Demonstrated in video, volume level not explicitly, quantitatively proven.                                                                                                                                                                                                                     |
-| HRS-04 | The ATmega328PB Xplained Mini shall sample and process data at 100 Hz `<br>`while maintaining <75% CPU utilization and maximum interrupt latency<1 `<br>`ms. | Successful,`<br>`Unverified, though firmware blocking / delay has never been observed in testing other specifications.                                                                                                                                                                                                               |
-| HRS-05 | The power subsystem shall provide 3.3V regulated output from a 3.7V Li-`<br>`Po battery with at least 500 mAh capacity.                                      | Altered, but functionally successful.`<br>`Power regulator required replacement due to issues in ordering. Boosts voltage to 5V to power the ATMega, and leveraging the MCU's ability to drive a 3.3 V rail for low-current peripherals.                                                                                             |
-| HRS-06 | The total current draw of the entire system (MCU + sensors + LCD) during `<br>`continuous operation shall remain ≤ 150 mA                                    | Successful `<br><br>`🧠could verify using multimeter.`<br>`Otherwise verified theoretically, all peripherals accounted for.                                                                                                                                                                                                          |
-| HRS-07 | The system shall operate continuously for at least 2 hours at 35 °C without `<br>`reset, crash, or data loss.                                                | Successful, verified theoretically (BOM current draw vs battery capacity).                                                                                                                                                                                                                                                           |
-| HRS-08 | All modules shall be mechanically integrated within an enclosure. The IMU `<br>`orientation error relative to the wrist reference frame shall be ≤ 10°.      | Partially successful:`<br>`The hardware is mechanically integrated on a single prototype, though not in an enclosure, creating slight fidelity concerns felt when putting the device on.`<br>`This integration does, however, fulfill the need to keep the IMU in consistent orientation relative to the arm (see product pictures). |
-
-## 4. Conclusion
-
-Reflect on your project. Some questions to address:
-
-- What did you learn from it?
-- What went well?
-  - Device Focus and Inspiration: The team chose this device concept based on an individual's background in an advanced topic (Machine Learning). Working around this firmware proposed novel but satisfying and ultimately succesful challenges.
-- What accomplishments are you proud of?
-  - Performance and Firmware Integration: The prototype runs in real-time, wirelessly, with no observable errors throughout the final demonstration. While some of these may've been assumed goals based on the project domain, the device feels more cohesive and functional that the HRS/SRS alone may convey.
-  - Form Factor: Although short of specification in some ways, having everything mounted on a single, lightweight wearable is visually striking and resulted in a satisfying final work period and demonstration.
-- What did you learn/gain from this experience?
-  - Larger Codebase Management: Team Members had to review one another's code updates to remain current on device function and precisely how the MCU was being utilized.
-- Did you have to change your approach?
-  - Early: Putting the second E in ESE by integrating an additional peripheral (audio feedback) was a major pivot point guided by staff feedback. As seen in our demonstrations, this addition greatly boosted our confidence in our devices utility and prompted us to explore further in making the display uniquely useful in addition to the audio system.
-  - Hardware Simplification: As can be seen in the evolving block diagrams, many changes were made to underlying hardware, typcically simplifiying systems into fewer devices. This was an important lesso in researching the state of the art, as attempts to build the audio system from scratch was far more expensive and less effective than an off-the-shelf board from Adafruit.
-- What could have been done differently?
-  - Team Communication and Meeting was very sparse, resulting in submission products coming together last-minute. This reality of team members' schedules was managed but did impact the team's ability to source and respond to feedback.
-  - Timeline Management showed itself materially in the final rugged fidelity of the final prototype, as discussed in the following section.
-- Did you encounter obstacles that you didn’t anticipate?
-  - Ordering:
-    - The indirectness of the process via an Account Manager created some orders to not be made by mis-communication.
-    - Surprisingly, the most basic orders via Amazon did not arrive until days before the Final Demonstration
-  - Hardware Integration
-    - While device performance was servicable in the context of our controlled testing, and demonstration, the physical integration is the most significant deficit of the device.
-    - Lead on this element, Christian, pigeon-holed on 3D-printing given the small scale and unique form factor, without accounting for other team member's changes and MEAM lab timelines.
-- What could be a next step for this project?
-  - Expansion: Better showcase the extensibility of the ML approach by adding addditional activities.
-  - Movement Counting: Attempt to capture individual excercise repititions to carve more of a niche as a high-performance excercise aid.
-  - Commercial Avenues are not of realistic interest. This project was a exploration of firmware concepts in a uniquely challenging environment at the cost of competitive utility.
-
-## References
-
-## C Libraries
-
-#### From WS3 (Worksheet 3)
-
-- **i2c.h / i2c.c** - I2C communication library for interfacing with the LSM6DSO IMU sensor over I2C protocol
-
-#### From Lab 4
-
-- **lib/ST7735.h / lib/ST7735.c** - Driver library for the ST7735 TFT LCD display controller, providing low-level display initialization and control functions
-- **lib/LCD_GFX.h / lib/LCD_GFX.c** - Graphics library for drawing text, shapes, and managing the LCD screen with the ST7735 controller
-
-#### Standard AVR Libraries
-
-- **avr/io.h** - AVR device-specific I/O definitions
-- **util/delay.h** - Delay functions for AVR microcontrollers
-- **avr/interrupt.h** - Interrupt handling for AVR
-- **stdio.h** - Standard input/output (sprintf)
-- **stdint.h** - Standard integer types (int16_t, uint8_t, etc.)
-- **string.h** - String manipulation (memset)
-- **math.h** - Mathematical functions (sqrtf)
-
-### Python Libraries
-
-#### data_collection.py
-
-- **serial** - PySerial library for serial communication with the microcontroller over USB
-  - Used to read IMU data from the device
-  - Install: `pip install pyserial`
-- **time** - Standard library for time-related functions
-- **os** - Standard library for file and directory operations
-- **glob** - Standard library for file pattern matching
-- **sys** - Standard library for command-line argument handling
-
-#### train_activity_classifier.py
-
-- **numpy** - Numerical computing library for array operations and mathematical functions
-  - Install: `pip install numpy`
-- **pandas** - Data manipulation library for reading and processing CSV files
-  - Install: `pip install pandas`
-- **scikit-learn** - Machine learning library
-  - **sklearn.tree.DecisionTreeClassifier** - Decision tree classifier
-  - **sklearn.utils.shuffle** - Dataset shuffling utility
-  - **sklearn.metrics** - Model evaluation metrics (accuracy_score, classification_report)
-  - Install: `pip install scikit-learn`
-- **joblib** - Library for saving and loading Python objects (model persistence)
-  - Install: `pip install joblib`
-- **os** - Standard library for file operations
-- **glob** - Standard library for file pattern matching
-
-#### export_tree_to_c.py
-
-- **joblib** - Library for loading saved model files
-  - Install: `pip install joblib`
-- **numpy** - Used for array operations when processing model data
-  - Install: `pip install numpy`
