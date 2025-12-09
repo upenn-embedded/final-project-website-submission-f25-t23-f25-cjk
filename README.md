@@ -21,7 +21,7 @@
 
 **GitHub Repository URL:** [https://github.com/upenn-embedded/final-project-f25-f25_final_project_t23_cjk](https://github.com/upenn-embedded/final-project-f25-f25_final_project_t23_cjk)
 
-**GitHub Pages Website URL:** [for final submission]\*
+**GitHub Pages Website URL:** [https://upenn-embedded.github.io/final-project-website-submission-f25-t23-f25-cjk/](https://upenn-embedded.github.io/final-project-website-submission-f25-t23-f25-cjk/)
 
 # Final Project Proposal
 
