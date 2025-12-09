@@ -617,7 +617,7 @@ while (1) {
 Let `delay_ms = 10` ms (from `_delay_ms(10)` at line 466)
 
 $$
-T_{sample} = \text{delay\_ms} = 10 \text{ ms} = 0.01 \text{ s}
+T_{\text{sample}} = \text{delay\_ms} = 10 \text{ ms} = 0.01 \text{ s}
 $$
 
 $$
