@@ -1,12 +1,3 @@
-# MVP Demo. Submission Notice
-
-[https://github.com/upenn-embedded/final-project-f25-f25_final_project_t23_cjk](https://github.com/upenn-embedded/final-project-f25-f25_final_project_t23_cjk)
-
-- 5190 README VSCode extensions are crashing
-- exporting via Github directly, links may not be clickable
-- Pre-pending this page to each section in order to reflect this, may currently require having github open to click links
-- Apologies for the inconvenience, but this error is out of our hands.
-
 # final-project-skeleton
 
 **Team Number:** 23
