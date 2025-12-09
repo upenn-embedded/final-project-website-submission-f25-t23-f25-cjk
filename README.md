@@ -29,9 +29,23 @@
 
 ## 2. Images
 
-[Insert final project images here]
+![Low resolution preview image of device](image/README/preview.jpg)
+_Low resolution preview image of device_
 
-_Include photos of your device from a few angles. If you have a casework, show both the exterior and interior (where the good EE bits are!)._
+![Device from different angle](image/README/first_angle.jpg)
+_Device from different angle_
+
+![Device at start of session with no sitting breaks](image/README/no_breaks.jpg)
+_Device at start of session with no sitting breaks_
+
+![Device while running](image/README/running.jpg)
+_Device while running_
+
+![Device while performing jumping jacks](image/README/jumping_jacks.jpg)
+_Device while performing jumping jacks_
+
+![Device at the end of session sitting after performing multiple exercises and taking multiple sitting breaks](image/README/sitting.jpg)
+_Device at the end of session sitting after performing multiple exercises and taking multiple sitting breaks_
 
 ## 3. Results
 
